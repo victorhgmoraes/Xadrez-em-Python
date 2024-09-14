@@ -1,0 +1,310 @@
+            elif e.type == x.MOUSEBUTTONDOWN:
+                location = x.mouse.get_pos()  # posição do mouse
+                col = location[0] // SQ_SIZE
+                linha = location[1] // SQ_SIZE
+
+                if quadSelecionado == (linha, col):  # O usuário clicou no mesmo quadrado duas vezes
+                    quadSelecionado = ()  # deselecionar
+                    CliquesJogador = []  # limpar cliques do jogador
+                else:
+                    quadSelecionado = (linha, col)
+                    pecaSelecionada = aj.tabuleiro[linha][col]
+                    
+                    # Verificar se a peça pertence ao jogador certo no primeiro clique
+                    if len(CliquesJogador) == 0:
+                        if (pecaSelecionada != "--" and  # Se não for um quadrado vazio
+                        ((pecaSelecionada[0] == 'w' and aj.whiteToMove) or 
+                            (pecaSelecionada[0] == 'b' and not aj.whiteToMove))):
+                            # Adicionar o primeiro clique válido
+                            CliquesJogador.append(quadSelecionado)
+                        else:
+                            quadSelecionado = ()  # desmarcar
+                            CliquesJogador = []  # limpar cliques
+                    elif len(CliquesJogador) == 1:  # Se for o segundo clique
+                        CliquesJogador.append(quadSelecionado)  # Adicionar o segundo clique
+                        mover = xadrezBack.Movimento(CliquesJogador[0], CliquesJogador[1], aj.tabuleiro)
+                        
+                        # Verifica se o movimento é válido e faz o movimento
+                        if (pecaSelecionada == "--" or  # Quadrado destino vazio
+                        (pecaSelecionada[0] != aj.tabuleiro[CliquesJogador[0][0]][CliquesJogador[0][1]][0])):  # Ou peça do oponente
+                            print(mover.pegarNotaçãoXadrez())
+                            aj.FazerMovimento(mover)
+                            quadSelecionado = ()  # resetar cliques do usuário
+                            CliquesJogador = []
+                        else:
+                            # Resetar se o movimento não for válido
+                            quadSelecionado = ()
+                            CliquesJogador = []
+                        FazerJogo(tela, aj)
+                        tempo.tick(MAX_FPS)
+                        x.display.flip()
+
+
+
+                        print(f"Turno: {'Branco' if self.whiteToMove else 'Preto'}") # Imprimir o turno atual
+
+
+                        class ArmazenamentoJogo():
+    def __init__(self):
+        self.tabuleiro = [
+            #tabuleiro em forma de lista 8x8 de 2 dimensões
+            #composto por 2 caracteres onde representam as peças de acordo com a conotação atual do xadrez
+            #1st caractere = color, 2nd = tipo da peça
+            #"--" representa espaços em branco
+            ["bR","bN","bB","bQ","bK","bB","bN","bR"],
+            ["bP","bP","bP","bP","bP","bP","bP","bP"],
+            ["--","--","--","--","--","--","--","--"],
+            ["--","--","--","--","--","--","--","--"],
+            ["--","--","--","--","--","--","--","--"],
+            ["--","--","--","--","--","--","--","--"],
+            ["wP","wP","wP","wP","wP","wP","wP","wP"],
+            ["wR","wN","wB","wQ","wK","wB","wN","wR"],
+        ]
+        self.FuncaoMovimentos = {'P' : self.getMovimentosPeao, 'R' : self.getMovimentosTorre, 'N' : self.getMovimentosCavalo, 'B' : self.getMovimentosBispo, 'Q' : self.getMovimentosRainha, 'K' : self.getMovimentosRei}
+
+        self.whiteToMove = True
+        self.moveLog = []
+        self.LocalizacaoReiBranco = (7, 4)
+        self.LocalizacaoReiPreto = (0, 4)
+        self.ChequeMate = False
+        self.Impasse = False
+
+
+    '''
+    Pega um movimento como um parametro e executa(isso n funcionará para roques, promoção de peão e en-passant)
+    '''
+    def FazerMovimento(self, mover):
+        self.tabuleiro[mover.LinhaInicial][mover.ColInicial] = "--"
+        self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = mover.pecaMovida
+        self.moveLog.append(mover)#guardar o movimento para poder voltar depois
+        self.whiteToMove = not self.whiteToMove #trocar turno
+        #atualiza a localização do rei se movido
+        if mover.pecaMovida == 'wK':
+            self.LocalizacaoReiBranco = (mover.LinhaFinal, mover.ColFinal)
+        elif mover.pecaMovida == 'bK':
+            self.LocalizacaoReiPreto = (mover.LinhaFinal, mover.ColFinal)
+
+
+    '''
+    desfazer o ultimo movimento feito
+    '''
+    def DesfazerMovimento(self):
+        if len(self.moveLog) != 0: #tenha certeza que há um movimento para desfazer
+            mover = self.moveLog.pop()
+            self.tabuleiro[mover.LinhaInicial][mover.ColInicial] = mover.pecaMovida
+            self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = mover.pecaGravada
+            self.whiteToMove = not self.whiteToMove #trocar time de volta
+            #Atualiza a localização do rei se preciso
+            if mover.pecaMovida == 'wK':
+                self.LocalizacaoReiBranco = (mover.LinhaInicial, mover.ColInicial)
+            elif mover.pecaMovida == 'bK':
+                self.LocalizacaoReiPreto = (mover.LinhaInicial, mover.ColInicial)
+
+    '''
+    todos os movimentos considerando check 
+    '''
+
+    def getMovimentosValidos(self):
+        #gerar todos os movimentos possíveis
+        movimentos = self.getTodosMovimentosPossiveis()
+        #para cada movimento, fazer o movimento
+        for i in range(len(movimentos)-1, -1, -1):
+            self.FazerMovimento(movimentos[i])
+            #gerar todos os movimentos do oponente
+            #para cada movimento do seu oponente, checar se ataca seu rei
+            self.whiteToMove = not self.whiteToMove
+            if self.emCheque():
+                movimentos.remove(movimentos[i]) #se estiver atacando seu rei, não é um movimento valido
+            self.whiteToMove = not self.whiteToMove
+            self.DesfazerMovimento()
+        if len(movimentos) == 0: #qualquer seja cheque mate ou impasse
+            if self.emCheque():
+                self.ChequeMate = True
+            else:
+                self.Impasse = True
+        else:
+            self.ChequeMate = False
+            self.Impasse = False
+        return movimentos
+    
+    '''
+    Determina se o jogador do turno atual está em cheque
+    '''
+    def emCheque(self):
+        if self.whiteToMove:
+            return self.QuadSobreAtaque(self.LocalizacaoReiBranco[0], self.LocalizacaoReiBranco[1])
+        else:
+            return self.QuadSobreAtaque(self.LocalizacaoReiPreto[0], self.LocalizacaoReiPreto[1])
+    '''
+    Determina se o inimigo consegue atacar o quadrado
+    '''
+    def QuadSobreAtaque(self, l, c):
+        self.whiteToMove = not self.whiteToMove #trocar para o turno do oponente
+        MovimentosOponente = self.getTodosMovimentosPossiveis()
+        self.whiteToMove = not self.whiteToMove #Trocar turnos de volta
+        for mover in MovimentosOponente:
+            if mover.LinhaFinal == l and mover.ColFinal == c: #Quadrado sobre ataque
+                return True
+        return False
+
+    '''
+    todos os movimentos sem considerar check
+    '''
+
+    def getTodosMovimentosPossiveis(self):
+        movimentos = []
+        for l in range(len(self.tabuleiro)): #numero de linhas
+            for c in range(len(self.tabuleiro[l])): #numero de colunas na devida linha
+                turno = self.tabuleiro[l][c][0]
+                if(turno == 'w' and self.whiteToMove) or (turno == 'b' and not self.whiteToMove):
+                    peca = self.tabuleiro[l][c][1]
+                    self.FuncaoMovimentos[peca](l, c, movimentos) #chama a função apropriada para cada peça
+        return movimentos
+
+    '''
+    pegar todos os movimentos para peão localizado na linha, coluna e adicionar esse movimentos para a lista
+    '''
+
+    def getMovimentosPeao(self, l, c, movimentos):
+        if self.whiteToMove: #movimentos de peões brancos
+            if self.tabuleiro[l - 1][c] == "--": #1 quadrado movimento de peao
+                movimentos.append(Movimento((l, c), (l - 1, c), self.tabuleiro))
+                if l == 6 and self.tabuleiro[l - 2][c] == "--": # 2 quadrado movimento de peao
+                    movimentos.append(Movimento((l, c), (l-2, c), self.tabuleiro))
+            if c - 1 >= 0: #capturas para esquerda
+                if self.tabuleiro[l - 1][c - 1][0] == 'b': #peça inimiga para capturar
+                    movimentos.append(Movimento((l, c), (l - 1, c - 1), self.tabuleiro))
+            if c + 1 <= 7: #capturas para direita
+                if self.tabuleiro[l - 1][c + 1][0] == 'b': #peça inimiga para capturar
+                    movimentos.append(Movimento((l, c), (l - 1, c + 1), self.tabuleiro))
+
+        else: #movimentos de peões pretos
+            if self.tabuleiro[l + 1][c] == "--": #1 quadrado movimento de peao
+                movimentos.append(Movimento((l, c), (l + 1, c), self.tabuleiro))
+                if l == 1 and self.tabuleiro[l + 2][c] == "--": # 2 quadrado movimento de peao
+                    movimentos.append(Movimento((l, c), (l + 2, c), self.tabuleiro))
+            if c - 1 >= 0: #capturas para esquerda
+                if self.tabuleiro[l + 1][c - 1][0] == 'w': #peça inimiga para capturar
+                    movimentos.append(Movimento((l, c), (l + 1, c - 1), self.tabuleiro))
+            if c + 1 <= 7: #capturas para direita
+                if self.tabuleiro[l + 1][c + 1][0] == 'w': #peça inimiga para capturar
+                    movimentos.append(Movimento((l, c), (l + 1, c + 1), self.tabuleiro))
+        #adicionar promoção de peão
+
+    '''
+    pegar todos os movimentos para torre localizado na linha, coluna e adicionar esse movimentos a lista
+    '''
+
+    def getMovimentosTorre(self, l, c, movimentos):
+        direcoes = ((-1, 0), (0, -1), (1, 0), (0, 1)) #cima, esquerda, baixo, direita
+        CorInimigo = "b" if self.whiteToMove else "w"
+        for d in direcoes:
+            for i in range(1, 8):
+                LinhaFinal = l + d[0] * i
+                ColFinal = c + d[1] * i
+                if 0 <= LinhaFinal < 8 and 0 <= ColFinal < 8: #no tabuleiro
+                    PecaFinal = self.tabuleiro[LinhaFinal][ColFinal]
+                    if PecaFinal == "--": #quadrado vazio valido
+                        movimentos.append(Movimento((l, c), (LinhaFinal, ColFinal), self.tabuleiro))
+                    elif PecaFinal[0] == CorInimigo: #peça inimiga valida
+                        movimentos.append(Movimento((l, c), (LinhaFinal, ColFinal), self.tabuleiro))
+                        break
+                    else: # peça amiga invalida
+                        break
+                else: # fora do tabuleiro
+                    break
+
+    '''
+    pegar todos os movimentos para cavalo localizado na linha, coluna e adicionar esse movimentos a lista
+    '''
+
+    def getMovimentosCavalo(self, l, c, movimentos):
+        MovimentosCavalo = ((-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1))
+        CorAliado = "w" if self.whiteToMove else "b"
+        for m in MovimentosCavalo:
+            LinhaFinal = l + m[0]
+            ColFinal = c + m[1]
+            if 0 <= LinhaFinal < 8 and 0 <= ColFinal < 8:
+                PecaFinal = self.tabuleiro[LinhaFinal][ColFinal]
+                if PecaFinal[0] != CorAliado: #não é uma peça aliada(vazio ou peça inimiga)
+                    movimentos.append(Movimento((l, c), (LinhaFinal, ColFinal), self.tabuleiro))
+
+    '''
+    pegar todos os movimentos para bispo localizado na linha, coluna e adicionar esse movimentos a lista
+    '''
+
+    def getMovimentosBispo(self, l, c, movimentos):
+        direcoes = ((-1, -1), (-1, 1), (1, -1), (1, 1)) #4 diagonais
+        CorInimigo = "b" if self.whiteToMove else "w"
+        for d in direcoes:
+            for i in range(1, 8): #bispo pode mover um maximode 7 quadrados
+                LinhaFinal = l + d[0] * i
+                ColFinal = c + d[1] * i
+                if 0 <= LinhaFinal < 8 and 0 <= ColFinal < 8: #no tabuleiro
+                    PecaFinal = self.tabuleiro[LinhaFinal][ColFinal]
+                    if PecaFinal == "--": #quadrado vazio valido
+                        movimentos.append(Movimento((l, c), (LinhaFinal, ColFinal), self.tabuleiro))
+                    elif PecaFinal[0] == CorInimigo: #peça inimiga valida
+                        movimentos.append(Movimento((l, c), (LinhaFinal, ColFinal), self.tabuleiro))
+                        break
+                    else: # peça amiga invalida
+                        break
+                else: # fora do tabuleiro
+                    break
+    '''
+    pegar todos os movimentos para Rainha localizado na linha, coluna e adicionar esse movimentos a lista
+    '''
+
+    def getMovimentosRainha(self, l, c, movimentos):
+        self.getMovimentosTorre(l, c, movimentos)
+        self.getMovimentosBispo(l, c, movimentos)
+
+    '''
+    pegar todos os movimentos para Rei localizado na linha, coluna e adicionar esse movimentos a lista
+    '''
+
+    def getMovimentosRei(self, l, c, movimentos):
+        MovimentosRei = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
+        CorAliado = "w" if self.whiteToMove else "b"
+        for i in range(8):
+            LinhaFinal = l + MovimentosRei[i][0]
+            ColFinal = c + MovimentosRei[i][1]
+            if 0 <= LinhaFinal < 8 and 0 <= ColFinal < 8:
+                PecaFinal = self.tabuleiro[LinhaFinal][ColFinal]
+                if PecaFinal[0] != CorAliado: #não é peça aliada (vazio ou peça inimiga)
+                    movimentos.append (Movimento((l, c), (LinhaFinal, ColFinal), self.tabuleiro))
+
+
+class Movimento():
+    #mapeia teclas para valores
+    # tecla = valor
+    ranksParaLinhas = {"1" : 7,"2" : 6,"3" : 5,"4" : 4,
+                       "5" : 3,"6" : 2,"7" : 1,"8" : 0}
+    linhasParaRanks = {v: t for t, v in ranksParaLinhas.items()}
+    arquivosParaColunas = {"a" : 0,"b" : 1,"c" : 2,"d" : 3,
+                           "e" : 4,"f" : 5,"g" : 6,"h" : 7}
+    colunasParaArquivos = {v: t for t, v in arquivosParaColunas.items()}
+    def __init__(self, QuadInicial, QuadFinal, tabuleiro):
+        self.LinhaInicial = QuadInicial[0]
+        self.ColInicial = QuadInicial[1]
+        self.LinhaFinal = QuadFinal[0]
+        self.ColFinal = QuadFinal[1]
+        self.pecaMovida = tabuleiro[self.LinhaInicial][self.ColInicial]
+        self.pecaGravada = tabuleiro[self.LinhaFinal][self.ColFinal]
+        self.idMovimento = self.LinhaInicial * 1000 + self.ColInicial * 100 + self.LinhaFinal * 10 + self.ColFinal
+        print(self.idMovimento)
+
+    '''
+    Sobreescrever o metodo do igual
+    '''
+    def __eq__(self, outro):
+        if isinstance(outro, Movimento):
+            return self.idMovimento == outro.idMovimento
+        return False
+
+    def pegarNotaçãoXadrez(self):
+        #você pode adicionar para tornar igual a notação real do xadrez
+        return self.getRankFile(self.LinhaInicial, self.ColInicial) + self.getRankFile(self.LinhaFinal, self.ColFinal)
+
+    def getRankFile(self, l, c):
+        return self.colunasParaArquivos[c] + self.linhasParaRanks[l]
