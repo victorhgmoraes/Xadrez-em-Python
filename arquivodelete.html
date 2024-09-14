@@ -1,0 +1,53 @@
+'''
+    Determina se o jogador do turno atual está em cheque
+    '''
+    def emCheque(self):
+        if self.whiteToMove:
+            return self.QuadSobreAtaque(self.LocalizacaoReiBranco[0], self.LocalizacaoReiBranco[1])
+        else:
+            return self.QuadSobreAtaque(self.LocalizacaoReiPreto[0], self.LocalizacaoReiPreto[1])
+    '''
+    Determina se o inimigo consegue atacar o quadrado
+    '''
+    def QuadSobreAtaque(self, l, c):
+        self.whiteToMove = not self.whiteToMove #trocar para o turno do oponente
+        MovimentosOponente = self.getTodosMovimentosPossiveis()
+        self.whiteToMove = not self.whiteToMove #Trocar turnos de volta
+        for mover in MovimentosOponente:
+            if mover.LinhaFinal == l and mover.ColFinal == c: #Quadrado sobre ataque
+                return True
+        return False
+
+        if self.whiteToMove: #movimentos de peões brancos
+            if self.tabuleiro[l - 1][c] == "--": #1 quadrado movimento de peao
+                movimentos.append(Movimento((l, c), (l - 1, c), self.tabuleiro))
+                if l == 6 and self.tabuleiro[l - 2][c] == "--": # 2 quadrado movimento de peao
+                    movimentos.append(Movimento((l, c), (l-2, c), self.tabuleiro))
+            if c - 1 >= 0: #capturas para esquerda
+                if self.tabuleiro[l - 1][c - 1][0] == 'b': #peça inimiga para capturar
+                    movimentos.append(Movimento((l, c), (l - 1, c - 1), self.tabuleiro))
+            if c + 1 <= 7: #capturas para direita
+                if self.tabuleiro[l - 1][c + 1][0] == 'b': #peça inimiga para capturar
+                    movimentos.append(Movimento((l, c), (l - 1, c + 1), self.tabuleiro))
+
+        else: #movimentos de peões pretos
+            if self.tabuleiro[l + 1][c] == "--": #1 quadrado movimento de peao
+                movimentos.append(Movimento((l, c), (l + 1, c), self.tabuleiro))
+                if l == 1 and self.tabuleiro[l + 2][c] == "--": # 2 quadrado movimento de peao
+                    movimentos.append(Movimento((l, c), (l + 2, c), self.tabuleiro))
+            if c - 1 >= 0: #capturas para esquerda
+                if self.tabuleiro[l + 1][c - 1][0] == 'w': #peça inimiga para capturar
+                    movimentos.append(Movimento((l, c), (l + 1, c - 1), self.tabuleiro))
+            if c + 1 <= 7: #capturas para direita
+                if self.tabuleiro[l + 1][c + 1][0] == 'w': #peça inimiga para capturar
+                    movimentos.append(Movimento((l, c), (l + 1, c + 1), self.tabuleiro))
+
+                    MovimentosRei = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
+        CorAliado = "w" if self.whiteToMove else "b"
+        for i in range(8):
+            LinhaFinal = l + MovimentosRei[i][0]
+            ColFinal = c + MovimentosRei[i][1]
+            if 0 <= LinhaFinal < 8 and 0 <= ColFinal < 8:
+                PecaFinal = self.tabuleiro[LinhaFinal][ColFinal]
+                if PecaFinal[0] != CorAliado: #não é peça aliada (vazio ou peça inimiga)
+                    movimentos.append (Movimento((l, c), (LinhaFinal, ColFinal), self.tabuleiro))
