@@ -1,9 +1,12 @@
 import pygame as x
-import xadrezBack
+import xadrezBack, IAXadrez
+from multiprocessing import Process, Queue
 
-WIDTH = HEIGHT = 712
+BOARDWIDTH = BOARDHEIGHT = 712
+MOVELOGPANELWIDTH = 250
+MOVELOGPANELHEIGHT = BOARDHEIGHT
 DIMENSION = 8
-SQ_SIZE = HEIGHT // DIMENSION
+SQ_SIZE = BOARDHEIGHT // DIMENSION
 MAX_FPS = 15 #15 de acordo com o video
 IMAGES = {}
 
@@ -15,9 +18,10 @@ def CarregarImagens():
 
 def Principal():
     x.init()
-    tela = x.display.set_mode((WIDTH, HEIGHT))
+    tela = x.display.set_mode((BOARDWIDTH + MOVELOGPANELWIDTH, BOARDHEIGHT))
     tempo = x.time.Clock()
     tela.fill(x.Color("white"))
+    moveLogFonte = x.font.SysFont("Arial", 20, False, False)
     aj = xadrezBack.ArmazenamentoJogo()
     movimentosValidos = aj.getMovimentosValidos()
     movimentoFeito = False #variavel flag para quando um movimento é feito
@@ -28,7 +32,13 @@ def Principal():
     quadSelecionado = () #nenhum quadrado selecionado, manter informação do ultimo clique do usuário (tupla: (linha, coluna))
     CliquesJogador = [] #manter informação dos cliques do jogador (2 tuplas [(6,4),(4,4)])
     FimDoJogo = False
+    JogadorUm = True #Se uma pessoa estiver jogando de brancas, isso vai ser verdadeiro, se uma IA estiver jogando, então será falso
+    JogadorDois = False #Mesmo que o de cima mas de pretas
+    IAPensando = False
+    ProcessoEncontrarMovimento = None
+    MovimentoDesfeito = False
     while running:
+        TurnoPessoa = (aj.whiteToMove and JogadorUm) or (not aj.whiteToMove and JogadorDois)
         for e in x.event.get():
             if e.type == x.QUIT:
                 running = False
@@ -38,15 +48,15 @@ def Principal():
                     localizacao = x.mouse.get_pos() #posição do mouse
                     col = localizacao[0]//SQ_SIZE
                     linha = localizacao[1]//SQ_SIZE
-                    if quadSelecionado == (linha, col): #O usuário clicou no mesmo quadrado duas vezes
+                    if quadSelecionado == (linha, col) or col >= 8: #O usuário clicou no mesmo quadrado duas vezes
                         quadSelecionado = () #deselecionar
                         CliquesJogador = [] #limpar cliques do jogador
                     else:
                         quadSelecionado = (linha, col)
                         CliquesJogador.append(quadSelecionado) #append nos dois primeiro e segundon cliques
-                    if len(CliquesJogador) == 2: #depois do segundo clique
+                    if len(CliquesJogador) == 2 and TurnoPessoa: #depois do segundo clique
                         mover = xadrezBack.Movimento(CliquesJogador[0], CliquesJogador[1], aj.tabuleiro)
-                        print(mover.pegarNotaçãoXadrez())
+                        print(mover.getNotacaoXadrez())
                         for i in range(len(movimentosValidos)):
                             if mover == movimentosValidos[i]:
                                 aj.FazerMovimento(movimentosValidos[i])
@@ -62,6 +72,11 @@ def Principal():
                     aj.DesfazerMovimento()
                     movimentoFeito = True
                     animar = False
+                    FimDoJogo = False
+                    if IAPensando:
+                        ProcessoEncontrarMovimento.terminate()
+                        IAPensando = False
+                    MovimentoDesfeito = True
                 if e.key == x.K_r: #resetar o tabuleiro quando a tecla 'r' é pressionada
                     aj = xadrezBack.ArmazenamentoJogo()
                     movimentosValidos = aj.getMovimentosValidos()
@@ -69,6 +84,28 @@ def Principal():
                     CliquesJogador = []
                     movimentoFeito = False
                     animar = False
+                    FimDoJogo = False
+                    if IAPensando:
+                        ProcessoEncontrarMovimento.terminate()
+                        IAPensando = False
+                    MovimentoDesfeito = True
+        #Localizador de movimento IA
+        if not FimDoJogo and not TurnoPessoa and not MovimentoDesfeito:
+            if not IAPensando:
+                IAPensando = True
+                print("Pensando...")
+                returnQueue = Queue() #usado para passar dados entre sequencias de programas
+                ProcessoEncontrarMovimento = Process(target = IAXadrez.EncontrarMelhorMovimento, args = (aj, movimentosValidos, returnQueue))
+                ProcessoEncontrarMovimento.start() #chama EncontrarMelhorMovimento(aj, movimentosValidos, returnQueue)
+                
+            if not ProcessoEncontrarMovimento.is_alive():
+                MovimentoIA = returnQueue.get()
+                if MovimentoIA is None:
+                    MovimentoIA = IAXadrez.EncontrarMovimentoAleatorio(movimentosValidos)
+                aj.FazerMovimento(MovimentoIA)
+                movimentoFeito = True
+                animar = True
+                IAPensando = False
 
         if movimentoFeito:
             if animar:
@@ -76,22 +113,37 @@ def Principal():
             movimentosValidos = aj.getMovimentosValidos()
             movimentoFeito = False
             animar = False
+            MovimentoDesfeito = False
 
-        FazerJogo(tela, aj, movimentosValidos, quadSelecionado)
+        FazerJogo(tela, aj, movimentosValidos, quadSelecionado, moveLogFonte)
 
-        if aj.Chequemate:
+        if aj.Chequemate or aj.Impasse:
             FimDoJogo = True
-            if aj.whiteToMove:
-                DesenharTexto(tela, 'Peças pretas vencem por chequemate')
-            else:
-                DesenharTexto(tela, 'Peças brancas vencem por chequemate')
-        elif aj.Impasse:
-            FimDoJogo = True
-            DesenharTexto(tela, 'Afogamento')
-
+            DesenharTextoFimDeJogo(tela, 'Empate' if aj.Impasse else 'Pretas vencem por chequemate' if aj.whiteToMove else 'Brancas vencem por chequemate')
+                
         tempo.tick(MAX_FPS)
         x.display.flip()
 
+'''
+Responsável pela parte gráfica
+'''
+
+def FazerJogo(tela, aj, movimentosValidos, quadSelecionado, moveLogFonte):
+    DesenharTabuleiro(tela) #desenhar quadrados
+    QuadradosBrilhantes(tela, aj, movimentosValidos, quadSelecionado)
+    DesenharPecas(tela, aj.tabuleiro) #desenhar peças no topo dos quadrados
+    DesenharMoveLog(tela, aj, moveLogFonte)
+'''
+Desenhar quadrados
+'''
+
+def DesenharTabuleiro(tela):
+    global cores
+    cores = [x.Color("White"), x.Color("grey")]
+    for l in range(DIMENSION):
+        for c in range(DIMENSION):
+            cor = cores[((l + c) % 2)]
+            x.draw.rect(tela, cor, x.Rect(c*SQ_SIZE, l*SQ_SIZE, SQ_SIZE, SQ_SIZE))
 '''
 quadrado brilhante selecionado e movimentos para peça selecionada
 '''
@@ -118,26 +170,6 @@ def QuadradosBrilhantes(tela, aj, movimentosValidos, quadSelecionado):
                 if mover.LinhaInicial == l and mover.ColInicial == c:
                     tela.blit(s, (mover.ColFinal * SQ_SIZE, mover.LinhaFinal * SQ_SIZE))
 '''
-Responsável pela parte gráfica
-'''
-
-def FazerJogo(tela, aj, movimentosValidos, quadSelecionado):
-    DesenharTabuleiro(tela) #desenhar quadrados
-    QuadradosBrilhantes(tela, aj, movimentosValidos, quadSelecionado)
-    DesenharPecas(tela, aj.tabuleiro) #desenhar peças no topo dos quadrados
-
-'''
-Desenhar quadrados
-'''
-
-def DesenharTabuleiro(tela):
-    global cores
-    cores = [x.Color("White"), x.Color("grey")]
-    for l in range(DIMENSION):
-        for c in range(DIMENSION):
-            cor = cores[((l + c) % 2)]
-            x.draw.rect(tela, cor, x.Rect(c*SQ_SIZE, l*SQ_SIZE, SQ_SIZE, SQ_SIZE))
-'''
 Desenhar peças
 '''
 def DesenharPecas(tela, tabuleiro):
@@ -146,6 +178,35 @@ def DesenharPecas(tela, tabuleiro):
             peca = tabuleiro[l][c]
             if peca != "--": #não é quadrado vazio
                 tela.blit(IMAGES[peca], x.Rect(c*SQ_SIZE, l*SQ_SIZE, SQ_SIZE, SQ_SIZE))
+
+"""
+Draws the move log.
+"""
+def DesenharMoveLog(tela, aj, fonte):
+    moveLogRect = x.Rect(BOARDWIDTH, 0, MOVELOGPANELWIDTH, MOVELOGPANELHEIGHT)
+    x.draw.rect(tela, x.Color('black'), moveLogRect)
+    moveLog = aj.moveLog
+    moveTextos = []
+    for i in range(0, len(moveLog), 2):
+        MoverCorda = str(i // 2 + 1) + '. ' + str(moveLog[i]) + " "
+        if i + 1 < len(moveLog):
+            MoverCorda += str(moveLog[i + 1]) + "  "
+        moveTextos.append(MoverCorda)
+
+    MovimentosPorLinha = 3
+    padding = 5
+    lineSpacing = 2
+    textoY = padding
+    for i in range(0, len(moveTextos), MovimentosPorLinha):
+        texto = ""
+        for j in range(MovimentosPorLinha):
+            if i + j < len(moveTextos):
+                texto += moveTextos[i + j]
+
+        objetoTexto = fonte.render(texto, True, x.Color('white'))
+        localizacaoTexto = moveLogRect.move(padding, textoY)
+        tela.blit(objetoTexto, localizacaoTexto)
+        textoY += objetoTexto.get_height() + lineSpacing
 
 '''
 Animar movimento
@@ -175,10 +236,10 @@ def MovimentoAnimado(mover, tela, tabuleiro, tempo):
         x.display.flip()
         tempo.tick(60)
 
-def DesenharTexto(tela, texto):
+def DesenharTextoFimDeJogo(tela, texto):
     fonte = x.font.SysFont("Helvetica", 32, True, False)
     TextoObj = fonte.render(texto, 0, x.Color("gray"))
-    TextoLocalizacao = x.Rect(0, 0, WIDTH, HEIGHT).move(WIDTH / 2 - TextoObj.get_width() / 2, HEIGHT / 2 - TextoObj.get_height() / 2)
+    TextoLocalizacao = x.Rect(0, 0, BOARDWIDTH, BOARDHEIGHT).move(BOARDWIDTH / 2 - TextoObj.get_width() / 2, BOARDHEIGHT / 2 - TextoObj.get_height() / 2)
     tela.blit(TextoObj, TextoLocalizacao)
     TextoObj = fonte.render(texto, 0, x.Color('black'))
     tela.blit(TextoObj, TextoLocalizacao.move(2, 2))

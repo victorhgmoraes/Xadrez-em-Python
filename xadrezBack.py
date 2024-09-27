@@ -48,6 +48,9 @@ class ArmazenamentoJogo():
 
         #Promoção de Peão
         if mover.ePromocaoPeao:
+            #if not is_AI:
+            #    PecaPromovida = input("Promover para Q, R, B, or N:") #take this to UI later
+            #    self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = mover.pecaMovida[0] + PecaPromovida
             self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = mover.pecaMovida[0] + 'Q'
         
         #Movimento Enpassant 
@@ -401,7 +404,6 @@ class ArmazenamentoJogo():
                                 pecaBloqueadora = True
                     if not pecaAtacante or pecaBloqueadora:
                         movimentos.append(Movimento((l, c), (l + valorMovimentacao, c + 1), self.tabuleiro, eMovimentoEnpassant = True))
-    #PAREI AQUI A REVISÃO DO CÓDIGO, ACHO Q TUDO ESTÁ FUNCIONANDO
 
     '''
     pegar todos os movimentos para torre localizado na linha, coluna e adicionar esse movimentos a lista
@@ -410,32 +412,32 @@ class ArmazenamentoJogo():
     def getMovimentosTorre(self, l, c, movimentos):
         PecaPingada = False
         DirecaoPin = ()
-        for i in range(len(self.pins)-1, -1, -1):
+        for i in range(len(self.pins) - 1, -1, -1):
             if self.pins[i][0] == l and self.pins[i][1] == c:
                 PecaPingada = True
-                DirecaoPin = (self.pins[i][2], self.pins[i][2])
-                if self.tabuleiro[l][c][1] != 'Q': #N pode remover a rainha do pin nos movimentos de torre, somente remove ele nos de bispo
+                DirecaoPin = (self.pins[i][2], self.pins[i][3])
+                if self.tabuleiro[l][c][
+                    1] != "Q":  # N pode remover a rainha do pin nos movimentos de torre, somente remove ele nos de bispo
                     self.pins.remove(self.pins[i])
                 break
-        direcoes = ((-1, 0), (0, -1), (1, 0), (0, 1)) #cima, esquerda, baixo, direita
+        direcoes = ((-1, 0), (0, -1), (1, 0), (0, 1))  #cima, esquerda, baixo, direita
         CorInimigo = "b" if self.whiteToMove else "w"
         for d in direcoes:
             for i in range(1, 8):
                 LinhaFinal = l + d[0] * i
                 ColFinal = c + d[1] * i
-                if 0 <= LinhaFinal < 8 and 0 <= ColFinal < 8: #no tabuleiro
+                if 0 <= LinhaFinal <= 7 and 0 <= ColFinal <= 7:  # No tabuleiro
                     if not PecaPingada or DirecaoPin == d or DirecaoPin == (-d[0], -d[1]):
                         PecaFinal = self.tabuleiro[LinhaFinal][ColFinal]
-                        if PecaFinal == "--": #quadrado vazio valido
+                        if PecaFinal == "--":  #quadrado vazio valido
                             movimentos.append(Movimento((l, c), (LinhaFinal, ColFinal), self.tabuleiro))
-                        elif PecaFinal[0] == CorInimigo: #peça inimiga valida
+                        elif PecaFinal[0] == CorInimigo:  # capturar peça inimiga
                             movimentos.append(Movimento((l, c), (LinhaFinal, ColFinal), self.tabuleiro))
                             break
-                        else: # peça amiga invalida
+                        else:  # peça amiga
                             break
-                    else: # fora do tabuleiro
-
-                        break
+                else:  # fora do tabuleiro
+                    break
 
     '''
     pegar todos os movimentos para cavalo localizado na linha, coluna e adicionar esse movimentos a lista
@@ -443,20 +445,20 @@ class ArmazenamentoJogo():
 
     def getMovimentosCavalo(self, l, c, movimentos):
         PecaPingada = False
-        for i in range(len(self.pins)-1, -1, -1):
+        for i in range(len(self.pins) - 1, -1, -1):
             if self.pins[i][0] == l and self.pins[i][1] == c:
                 PecaPingada = True
                 self.pins.remove(self.pins[i])
                 break
-        movimentosCavalo = ((-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1))
+        movimentosCavalo = ((-2, -1), (-2, 1), (-1, 2), (1, 2), (2, -1), (2, 1), (-1, -2), (1, -2))
         CorAliado = "w" if self.whiteToMove else "b"
-        for m in movimentosCavalo:
-            LinhaFinal = l + m[0]
-            ColFinal = c + m[1]
-            if 0 <= LinhaFinal < 8 and 0 <= ColFinal < 8:
-                if not PecaPingada: 
+        for mover in movimentosCavalo:
+            LinhaFinal = l + mover[0]
+            ColFinal = c + mover[1]
+            if 0 <= LinhaFinal <= 7 and 0 <= ColFinal <= 7:
+                if not PecaPingada:
                     PecaFinal = self.tabuleiro[LinhaFinal][ColFinal]
-                    if PecaFinal[0] != CorAliado: #não é uma peça aliada(vazio ou peça inimiga)
+                    if PecaFinal[0] != CorAliado:  #não é uma peça aliada(vazio ou peça inimiga)
                         movimentos.append(Movimento((l, c), (LinhaFinal, ColFinal), self.tabuleiro))
 
     '''
@@ -466,30 +468,31 @@ class ArmazenamentoJogo():
     def getMovimentosBispo(self, l, c, movimentos):
         PecaPingada = False
         DirecaoPin = ()
-        for i in range(len(self.pins)-1, -1, -1):
+        for i in range(len(self.pins) - 1, -1, -1):
             if self.pins[i][0] == l and self.pins[i][1] == c:
                 PecaPingada = True
                 DirecaoPin = (self.pins[i][2], self.pins[i][3])
                 self.pins.remove(self.pins[i])
                 break
-        direcoes = ((-1, -1), (-1, 1), (1, -1), (1, 1)) #4 diagonais
+        direcoes = ((-1, -1), (-1, 1), (1, 1), (1, -1))  # diagonais
         CorInimigo = "b" if self.whiteToMove else "w"
         for d in direcoes:
-            for i in range(1, 8): #bispo pode mover um maximode 7 quadrados
+            for i in range(1, 8):
                 LinhaFinal = l + d[0] * i
                 ColFinal = c + d[1] * i
-                if 0 <= LinhaFinal < 8 and 0 <= ColFinal < 8: #no tabuleiro
+                if 0 <= LinhaFinal <= 7 and 0 <= ColFinal <= 7:  # checar se o movimento está dentro do tabuleiro
                     if not PecaPingada or DirecaoPin == d or DirecaoPin == (-d[0], -d[1]):
                         PecaFinal = self.tabuleiro[LinhaFinal][ColFinal]
-                        if PecaFinal == "--": #quadrado vazio valido
+                        if PecaFinal == "--":  # quadrado vazio é válido
                             movimentos.append(Movimento((l, c), (LinhaFinal, ColFinal), self.tabuleiro))
-                        elif PecaFinal[0] == CorInimigo: #peça inimiga valida
+                        elif PecaFinal[0] == CorInimigo:  # capturar peça inimiga
                             movimentos.append(Movimento((l, c), (LinhaFinal, ColFinal), self.tabuleiro))
                             break
-                        else: # peça amiga invalida
+                        else:  # peça aliada
                             break
-                    else: # fora do tabuleiro
-                        break
+                else:  # fora do tabuleiro
+                    break
+
     '''
     pegar todos os movimentos para Rainha localizado na linha, coluna e adicionar esse movimentos a lista
     '''
@@ -506,26 +509,25 @@ class ArmazenamentoJogo():
         MovimentosLinha = (-1, -1, -1, 0, 0, 1, 1, 1)
         MovimentosCol = (-1, 0, 1, -1, 1, -1, 0, 1)
         CorAliado = "w" if self.whiteToMove else "b"
-        for i  in range(8):
+        for i in range(8):
             LinhaFinal = l + MovimentosLinha[i]
             ColFinal = c + MovimentosCol[i]
             if 0 <= LinhaFinal <= 7 and 0 <= ColFinal <= 7:
                 PecaFinal = self.tabuleiro[LinhaFinal][ColFinal]
-                if PecaFinal[0] != CorAliado: #não é peça aliada (vazio ou peça inimiga)
+                if PecaFinal[0] != CorAliado:  # não é peça aliada (vazio ou peça inimiga)
                     #colocar rei no quadrado final e checar se tem cheque
-                    if CorAliado == 'w':
+                    if CorAliado == "w":
                         self.LocalizacaoReiBranco = (LinhaFinal, ColFinal)
                     else:
                         self.LocalizacaoReiPreto = (LinhaFinal, ColFinal)
                     em_Cheque, pins, cheques = self.ChecarParaPinsECheques()
                     if not em_Cheque:
                         movimentos.append(Movimento((l, c), (LinhaFinal, ColFinal), self.tabuleiro))
-                        #Colocar rei na posição original
-                        if CorAliado == 'w':
-                            self.LocalizacaoReiBranco = (l, c)
-                        else: 
-                            self.LocalizacaoReiPreto = (l, c)
-                            
+                    #Colocar rei na posição original
+                    if CorAliado == "w":
+                        self.LocalizacaoReiBranco = (l, c)
+                    else:
+                        self.LocalizacaoReiPreto = (l, c)
 
     '''
     Gerar todos os movimentos validos de roque para rei no (l, c) e adiciona-los na lista de movimentos
@@ -596,9 +598,43 @@ class Movimento():
             return self.idMovimento == outro.idMovimento
         return False
 
-    def pegarNotaçãoXadrez(self):
-        #você pode adicionar para tornar igual a notação real do xadrez
-        return self.getRankFile(self.LinhaInicial, self.ColInicial) + self.getRankFile(self.LinhaFinal, self.ColFinal)
+    def getNotacaoXadrez(self):
+        if self.ePromocaoPeao:
+            return self.getRankFile(self.LinhaFinal, self.ColFinal) + "Q"
+        if self.eMovimentoRoque:
+            if self.ColFinal == 1:
+                return "0-0-0"
+            else:
+                return "0-0"
+        if self.eMovimentoEnpassant:
+            return self.getRankFile(self.LinhaInicial, self.ColInicial)[0] + "x" + self.getRankFile(self.LinhaFinal, self.LinhaFinal) + " e.p."
+        if self.pecaGravada != "--":
+            if self.pecaMovida[1] == "P":
+                return self.getRankFile(self.LinhaInicial, self.ColInicial)[0] + "x" + self.getRankFile(self.LinhaFinal, self.ColFinal)
+            else:
+                return self.pecaMovida[1] + "x" + self.getRankFile(self.LinhaFinal, self.ColFinal)
+        else:
+            if self.pecaMovida[1] == "P":
+                return self.getRankFile(self.LinhaFinal, self.ColFinal)
+            else:
+                return self.pecaMovida[1] + self.getRankFile(self.LinhaFinal, self.ColFinal)
 
     def getRankFile(self, l, c):
         return self.colunasParaArquivos[c] + self.linhasParaRanks[l]
+
+    def __str__(self):
+        if self.eMovimentoRoque:
+            return "0-0" if self.ColFinal == 6 else "0-0-0"
+
+        QuadFinal = self.getRankFile(self.LinhaFinal, self.ColFinal)
+
+        if self.pecaMovida[1] == "P":
+            if self.eCapturada:
+                return self.colunasParaArquivos[self.ColInicial] + "x" + QuadFinal
+            else:
+                return QuadFinal + "Q" if self.ePromocaoPeao else QuadFinal
+
+        MoverCorda = self.pecaMovida[1]
+        if self.eCapturada:
+            MoverCorda += "x"
+        return MoverCorda + QuadFinal
