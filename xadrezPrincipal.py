@@ -1,5 +1,6 @@
 import pygame as x
 import xadrezBack, IAXadrez
+import sys
 from multiprocessing import Process, Queue
 
 BOARDWIDTH = BOARDHEIGHT = 712
@@ -19,6 +20,10 @@ def CarregarImagens():
 def Principal():
     x.init()
     tela = x.display.set_mode((BOARDWIDTH + MOVELOGPANELWIDTH, BOARDHEIGHT))
+    # Chamar a seleção do modo de jogo
+    JogadorUm, JogadorDois = DesenharModoJogo(tela)
+    if JogadorUm is None and JogadorDois is None:
+        return  # Caso o jogador feche o jogo na tela de seleção, encerrar o programa
     tempo = x.time.Clock()
     tela.fill(x.Color("white"))
     moveLogFonte = x.font.SysFont("Arial", 20, False, False)
@@ -32,8 +37,6 @@ def Principal():
     quadSelecionado = () #nenhum quadrado selecionado, manter informação do ultimo clique do usuário (tupla: (linha, coluna))
     CliquesJogador = [] #manter informação dos cliques do jogador (2 tuplas [(6,4),(4,4)])
     FimDoJogo = False
-    JogadorUm = True #Se uma pessoa estiver jogando de brancas, isso vai ser verdadeiro, se uma IA estiver jogando, então será falso
-    JogadorDois = False #Mesmo que o de cima mas de pretas
     IAPensando = False
     ProcessoEncontrarMovimento = None
     MovimentoDesfeito = False
@@ -133,6 +136,77 @@ def FazerJogo(tela, aj, movimentosValidos, quadSelecionado, moveLogFonte):
     QuadradosBrilhantes(tela, aj, movimentosValidos, quadSelecionado)
     DesenharPecas(tela, aj.tabuleiro) #desenhar peças no topo dos quadrados
     DesenharMoveLog(tela, aj, moveLogFonte)
+
+'''
+Desenhar Seleção de modo de jogo
+'''
+
+def DesenharModoJogo(tela):
+    fonteTitulo = x.font.SysFont("Arial", 48, True, False)
+    fonteBotao = x.font.SysFont("Arial", 36, True, False)
+    # Carrega e redimensiona a imagem de fundo
+    imagemDeFundo = x.image.load("imagens/xadrez.jpg")  # Substitua pelo caminho da sua imagem
+    imagemDeFundo = x.transform.scale(imagemDeFundo, (BOARDWIDTH + MOVELOGPANELWIDTH, BOARDHEIGHT))
+    # Desenha a imagem de fundo
+    tela.blit(imagemDeFundo, (0, 0))
+    # Desenha o título com sombra
+    tituloTexto = fonteTitulo.render("Selecione o Modo de Jogo", True, x.Color("white"))
+    sombraTitulo = fonteTitulo.render("Selecione o Modo de Jogo", True, x.Color("black"))
+    # Centralizar o título
+    tituloX = (BOARDWIDTH + MOVELOGPANELWIDTH) // 2 - tituloTexto.get_width() // 2
+    tituloY = BOARDHEIGHT // 4
+    tela.blit(sombraTitulo, (tituloX + 2, tituloY + 2))  # Sombra
+    tela.blit(tituloTexto, (tituloX, tituloY))  # Texto principal
+    # Desenhar os botões
+    modoPessoaPessoa = fonteBotao.render("Pessoa vs Pessoa", True, x.Color("white"))
+    modoPessoaIA = fonteBotao.render("Pessoa vs IA", True, x.Color("white"))
+    # Configuração dos botões
+    larguraBotao = max(modoPessoaPessoa.get_width(), modoPessoaIA.get_width()) + 40
+    alturaBotao = modoPessoaPessoa.get_height() + 20
+    botaoPessoaPessoa = x.Rect((BOARDWIDTH + MOVELOGPANELWIDTH) // 2 - larguraBotao // 2, 
+                               BOARDHEIGHT // 2 - 60, larguraBotao, alturaBotao)
+    botaoPessoaIA = x.Rect((BOARDWIDTH + MOVELOGPANELWIDTH) // 2 - larguraBotao // 2, 
+                           BOARDHEIGHT // 2 + 60, larguraBotao, alturaBotao)
+    # Desenho dos botões com bordas arredondadas
+    desenharBotao(tela, botaoPessoaPessoa, modoPessoaPessoa)
+    desenharBotao(tela, botaoPessoaIA, modoPessoaIA)
+    x.display.flip()
+    # Lógica de interação do usuário
+    esperandoEscolha = True
+    while esperandoEscolha:
+        for e in x.event.get():
+            if e.type == x.QUIT:
+                return None, None  # Ao fechar a janela, retornar None para encerrar o jogo
+            elif e.type == x.MOUSEBUTTONDOWN:
+                pos = x.mouse.get_pos()
+
+                # Verifica se o clique foi em um dos botões
+                if botaoPessoaPessoa.collidepoint(pos):
+                    return True, True  # Ambos jogadores são pessoas
+                elif botaoPessoaIA.collidepoint(pos):
+                    return True, False  # Jogador 1 é pessoa, Jogador 2 é IA
+            # Efeito de hover (realce ao passar o mouse)
+            pos = x.mouse.get_pos()
+            if botaoPessoaPessoa.collidepoint(pos):
+                desenharBotao(tela, botaoPessoaPessoa, modoPessoaPessoa, corBotao=(34, 40, 49))  # Realçar
+            else:
+                desenharBotao(tela, botaoPessoaPessoa, modoPessoaPessoa)
+            if botaoPessoaIA.collidepoint(pos):
+                desenharBotao(tela, botaoPessoaIA, modoPessoaIA, corBotao=(34, 40, 49))  # Realçar
+            else:
+                desenharBotao(tela, botaoPessoaIA, modoPessoaIA)
+            x.display.flip()
+
+# Função auxiliar para desenhar botões com bordas arredondadas
+def desenharBotao(tela, retangulo, texto, corBotao=(57, 54, 70), corBorda=(109, 93, 110), larguraBorda=5):
+    # Desenha a borda arredondada
+    x.draw.rect(tela, corBorda, retangulo.inflate(10, 10), border_radius=15)
+    # Desenha o fundo do botão
+    x.draw.rect(tela, corBotao, retangulo, border_radius=15)
+    # Renderiza o texto no centro do botão
+    tela.blit(texto, (retangulo.x + (retangulo.width - texto.get_width()) // 2, 
+                      retangulo.y + (retangulo.height - texto.get_height()) // 2))
+
 '''
 Desenhar quadrados
 '''
