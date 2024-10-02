@@ -1,3 +1,5 @@
+import time
+import xadrezPrincipal
 class ArmazenamentoJogo():
     def __init__(self):
         self.tabuleiro = [
@@ -15,9 +17,9 @@ class ArmazenamentoJogo():
             ["wR","wN","wB","wQ","wK","wB","wN","wR"]
         ]
         self.FuncaoMovimentos = {'P' : self.getMovimentosPeao, 'R' : self.getMovimentosTorre, 'N' : self.getMovimentosCavalo,
-                                  'B' : self.getMovimentosBispo, 'Q' : self.getMovimentosRainha, 'K' : self.getMovimentosRei}
+                                'B' : self.getMovimentosBispo, 'Q' : self.getMovimentosRainha, 'K' : self.getMovimentosRei}
         self.whiteToMove = True
-        self.moveLog = []
+        self.MoveLog = []
         self.LocalizacaoReiBranco = (7, 4)
         self.LocalizacaoReiPreto = (0, 4)
         self.Chequemate = False
@@ -30,20 +32,46 @@ class ArmazenamentoJogo():
         self.DireitoRoqueAtual = DireitosRoque(True, True, True, True)
         self.DireitosRoqueLog = [DireitosRoque(self.DireitoRoqueAtual.wks, self.DireitoRoqueAtual.bks,
                                                 self.DireitoRoqueAtual.wqs, self.DireitoRoqueAtual.bqs)]
+        self.Empate50Movimentos = False #Variavel para indicar empate
+        #ESTE TIPO DE EMPATE NÃO FUNCIONA CONTRA IA, IMPROVAVEL A SUA IMPLEMENTAÇÃO PARA O MODO DE JOGO PLAYER VS IA
+        self.Contador50Movimentos = 0  # Contador para rastrear a regra dos 50 movimentos
+        self.HistoricoContadores = []
+        self.pontuacaoBrancas = 0  # Inicializa a pontuação das peças brancas
+        self.pontuacaoPretas = 0   # Inicializa a pontuação das peças pretas
+        self.tempo_restante = 0
 
+
+    '''
+    Regra da três posições: segundo as regras oficiais estabelecidas pela FIDE, 
+    um jogador pode reclamar o empate quando uma posição for repetida pela terceira
+    vez em um jogo. A reclamação deve ser feita na vez do jogador,e as possibilidades
+    de movimento tem que ser as mesmas para todas as peças no tabuleiro.
+    '''
 
     '''
     Pega um movimento como um parametro e executa(isso n funcionará para roques, promoção de peão e en-passant)
     '''
     def FazerMovimento(self, mover):
+        self.HistoricoContadores.append(self.Contador50Movimentos)
         self.tabuleiro[mover.LinhaInicial][mover.ColInicial] = "--"
-        self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = mover.pecaMovida
-        self.moveLog.append(mover)#guardar o movimento para poder voltar depois
+        self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = mover.PecaMovida
+        self.MoveLog.append(mover)#guardar o movimento para poder voltar depois
         self.whiteToMove = not self.whiteToMove #trocar turno
         #atualiza a localização do rei se movido
-        if mover.pecaMovida == 'wK':
+
+        # Se foi captura ou movimento de peão, resetar o contador
+        if mover.PecaCapturada != '--' or mover.PecaMovida[1] == 'P':  
+            self.Contador50Movimentos = 0
+        else:
+            self.Contador50Movimentos += 1
+
+        # Verificar regra dos 50 movimentos (100 no total, 50 para cada lado)
+        if self.Contador50Movimentos >= 100:  # Contagem inclui os dois jogadores
+            self.Empate50Movimentos = True
+
+        if mover.PecaMovida == 'wK':
             self.LocalizacaoReiBranco = (mover.LinhaFinal, mover.ColFinal)
-        elif mover.pecaMovida == 'bK':
+        elif mover.PecaMovida == 'bK':
             self.LocalizacaoReiPreto = (mover.LinhaFinal, mover.ColFinal)
 
         #Promoção de Peão
@@ -51,14 +79,15 @@ class ArmazenamentoJogo():
             #if not is_AI:
             #    PecaPromovida = input("Promover para Q, R, B, or N:") #take this to UI later
             #    self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = mover.pecaMovida[0] + PecaPromovida
-            self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = mover.pecaMovida[0] + 'Q'
+            #else:
+            self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = mover.PecaMovida[0] + 'Q'
         
         #Movimento Enpassant 
         if mover.eMovimentoEnpassant:
             self.tabuleiro[mover.LinhaInicial][mover.ColFinal] = '--' #capturando o peão
 
         #atualizar a variável enpassantPossivel
-        if mover.pecaMovida[1] == 'P' and abs(mover.LinhaInicial - mover.LinhaFinal) == 2: #somente em avanço de peao de 2 quadrados
+        if mover.PecaMovida[1] == 'P' and abs(mover.LinhaInicial - mover.LinhaFinal) == 2: #somente em avanço de peao de 2 quadrados
             self.EnpassantPossivel = ((mover.LinhaInicial + mover.LinhaFinal)//2, mover.ColInicial)
         else:
             self.EnpassantPossivel = ()
@@ -84,32 +113,32 @@ class ArmazenamentoJogo():
     desfazer o ultimo movimento feito
     '''
     def DesfazerMovimento(self):
-        if len(self.moveLog) != 0: #tenha certeza que há um movimento para desfazer
-            mover = self.moveLog.pop()
-            self.tabuleiro[mover.LinhaInicial][mover.ColInicial] = mover.pecaMovida
-            self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = mover.pecaGravada
+        if len(self.MoveLog) != 0: #tenha certeza que há um movimento para desfazer
+            mover = self.MoveLog.pop()
+            self.tabuleiro[mover.LinhaInicial][mover.ColInicial] = mover.PecaMovida
+            self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = mover.PecaCapturada
             self.whiteToMove = not self.whiteToMove #trocar time de volta
             #Atualiza a localização do rei se preciso
-            if mover.pecaMovida == 'wK':
+            if mover.PecaMovida == 'wK':
                 self.LocalizacaoReiBranco = (mover.LinhaInicial, mover.ColInicial)
-            elif mover.pecaMovida == 'bK':
+            elif mover.PecaMovida == 'bK':
                 self.LocalizacaoReiPreto = (mover.LinhaInicial, mover.ColInicial)
             #desfazer movimento enpassant
             if mover.eMovimentoEnpassant:
                 self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = '--' #deixar os quadrados vazios
-                self.tabuleiro[mover.LinhaInicial][mover.ColFinal] = mover.pecaGravada
+                self.tabuleiro[mover.LinhaInicial][mover.ColFinal] = mover.PecaCapturada
                 self.EnpassantPossivel = (mover.LinhaFinal, mover.ColFinal)
 
             self.EnpassantPossivelLog.pop()
             self.EnpassantPossivel = self.EnpassantPossivelLog[-1]
 
             #desfazer avanço de peão de 2 quadrados
-            if mover.pecaMovida[1] == 'P' and abs(mover.LinhaInicial - mover.LinhaFinal) == 2:
+            if mover.PecaMovida[1] == 'P' and abs(mover.LinhaInicial - mover.LinhaFinal) == 2:
                 self.EnpassantPossivel = ()
         #desfazer direitos de roque
         self.DireitosRoqueLog.pop() #desfazer do novo movimento de roqque do movimento que estamos desfazendo
-        novosDireitos = self.DireitosRoqueLog[-1] #pegar os direitosRoqueAtual para o ultimo da lista
-        self.DireitoRoqueAtual = DireitosRoque(novosDireitos.wks, novosDireitos.bks, novosDireitos.wqs, novosDireitos.bqs)
+        NovosDireitos = self.DireitosRoqueLog[-1] #pegar os direitosRoqueAtual para o ultimo da lista
+        self.DireitoRoqueAtual = DireitosRoque(NovosDireitos.wks, NovosDireitos.bks, NovosDireitos.wqs, NovosDireitos.bqs)
         #desfazer Movimento Roque
         if mover.eMovimentoRoque:
             if mover.ColFinal - mover.ColInicial == 2:  # lado do rei
@@ -120,36 +149,38 @@ class ArmazenamentoJogo():
                 self.tabuleiro[mover.LinhaFinal][mover.ColFinal + 1] = '--'
         self.Chequemate = False
         self.Impasse = False
-
-
+        if self.HistoricoContadores:
+            #Restaure o contador do historico
+            self.Contador50Movimentos = self.HistoricoContadores.pop()
+    
     """
     Atualizar Direitos de Roque conforme o movimento
     """     
     def AtualizarDireitosRoque(self, mover):
-        if mover.pecaGravada == "wR":
+        if mover.PecaCapturada == "wR":
             if mover.ColFinal == 0:  # torre esquerda
                 self.DireitoRoqueAtual.wqs = False
             elif mover.ColFinal == 7:  # torre direita
                 self.DireitoRoqueAtual.wks = False
-        elif mover.pecaGravada == "bR":
+        elif mover.PecaCapturada == "bR":
             if mover.ColFinal == 0:  # torre esquerda
                 self.DireitoRoqueAtual.bqs = False
             elif mover.ColFinal == 7:  # torre direita
                 self.DireitoRoqueAtual.bks = False
 
-        if mover.pecaMovida == 'wK':
+        if mover.PecaMovida == 'wK':
             self.DireitoRoqueAtual.wks = False
             self.DireitoRoqueAtual.wqs = False
-        elif mover.pecaMovida == 'bK':
+        elif mover.PecaMovida == 'bK':
             self.DireitoRoqueAtual.bks = False
             self.DireitoRoqueAtual.bqs = False
-        elif mover.pecaMovida == 'wR':
+        elif mover.PecaMovida == 'wR':
             if mover.LinhaInicial == 7:
                 if mover.ColInicial == 0:  # torre esquerda
                     self.DireitoRoqueAtual.wqs = False
                 elif mover.ColInicial == 7:  # torre direita
                     self.DireitoRoqueAtual.wks = False
-        elif mover.pecaMovida == 'bR':
+        elif mover.PecaMovida == 'bR':
             if mover.LinhaInicial == 0:
                 if mover.ColInicial == 0:  # torre esquerda
                     self.DireitoRoqueAtual.bqs = False
@@ -161,9 +192,11 @@ class ArmazenamentoJogo():
     '''
 
     def getMovimentosValidos(self):
-        tempEnpassantPossivel = self.EnpassantPossivel
-        tempDireitosRoque = DireitosRoque(self.DireitoRoqueAtual.wks, self.DireitoRoqueAtual.bks,
-                                          self.DireitoRoqueAtual.wqs, self.DireitoRoqueAtual.bqs)
+        if self.Empate50Movimentos:
+            return [] # Não há mais movimentos válidos após o empate
+        TempEnpassantPossivel = self.EnpassantPossivel
+        TempDireitosRoque = DireitosRoque(self.DireitoRoqueAtual.wks, self.DireitoRoqueAtual.bks,
+                                        self.DireitoRoqueAtual.wqs, self.DireitoRoqueAtual.bqs)
         # Algoritimo avançado
         movimentos = []
         self.em_Cheque, self.pins, self.cheques = self.ChecarParaPinsECheques()
@@ -196,7 +229,7 @@ class ArmazenamentoJogo():
                             break
                 # descartar quaisquer movimentos que n bloqueiam o cheque ou mover o rei
                 for i in range(len(movimentos) - 1, -1, -1):
-                    if movimentos[i].pecaMovida[1] != "K":  # Mover n move o rei então é necessário bloquear ou capturar
+                    if movimentos[i].PecaMovida[1] != "K":  # Mover n move o rei então é necessário bloquear ou capturar
                         if not (movimentos[i].LinhaFinal,
                                 movimentos[i].ColFinal) in QuadradosValidos:  # mover não bloqueia ou captura peças
                             movimentos.remove(movimentos[i])
@@ -213,13 +246,13 @@ class ArmazenamentoJogo():
             if self.emCheque():
                 self.Chequemate = True
             else:
-                # Impasse em movimentos repetitivos
+                # TODO Impasse em movimentos repetitivos
                 self.Impasse = True
         else:
             self.Chequemate = False
             self.Impasse = False
 
-        self.DireitoRoqueAtual = tempDireitosRoque
+        self.DireitoRoqueAtual = TempDireitosRoque
         return movimentos
     
     '''
@@ -321,7 +354,55 @@ class ArmazenamentoJogo():
                     em_Cheque = True
                     cheques.append((LinhaFinal, ColFinal, mover[0], mover[1]))
         return em_Cheque, pins, cheques
-
+    '''
+    def verificar_empate_por_insuficiencia_material(self, tabuleiro):
+        """Verifica se o jogo terminou em empate por insuficiência de material.
+        Args:
+            tabuleiro: A representação do tabuleiro.
+        Returns:
+            bool: True se houver empate, False caso contrário.
+        """
+        # Contar o número de peças de cada jogador
+        num_pecas_brancas = 0
+        num_pecas_pretas = 0
+        for linha in tabuleiro:
+            for casa in linha:
+                if casa[0] == 'w':
+                    num_pecas_brancas += 1
+                elif casa[0] == 'b':
+                    num_pecas_pretas += 1
+        # Se um dos jogadores tiver apenas o rei, é empate
+        if num_pecas_brancas == 1 or num_pecas_pretas == 1:
+            return True
+        # Verificar se ambos os jogadores têm apenas rei e bispo de cores diferentes
+        def bispos_cores_diferentes(tabuleiro):
+            cores_bispos = set()
+            for linha in tabuleiro:
+                for col, casa in enumerate(linha):
+                    if casa[1] == 'B':
+                        cores_bispos.add((col + linha) % 2)  # Calcula a cor do quadrado (0 ou 1)
+            return len(cores_bispos) == 2
+        if num_pecas_brancas == 2 and num_pecas_pretas == 2 and bispos_cores_diferentes(tabuleiro):
+            return True
+        # Verificar outras condições de empate
+        # Rei e bispo contra rei
+        if (num_pecas_brancas == 2 and num_pecas_pretas == 1) or (num_pecas_brancas == 1 and num_pecas_pretas == 2):
+            return True
+        # Rei e cavalo contra rei
+        num_cavalos_brancos = 0
+        num_cavalos_pretos = 0
+        for linha in tabuleiro:
+            for casa in linha:
+                if casa[1] == 'N':
+                    if casa[0] == 'w':
+                        num_cavalos_brancos += 1
+                    else:
+                        num_cavalos_pretos += 1
+        if (num_pecas_brancas == 2 and num_cavalos_brancos == 1 and num_pecas_pretas == 1) or \
+        (num_pecas_brancas == 1 and num_cavalos_pretos == 1 and num_pecas_pretas == 2):
+            return True
+        return False
+    '''
     '''
     pegar todos os movimentos para peão localizado na linha, coluna e adicionar esse movimentos para a lista
     '''
@@ -564,30 +645,30 @@ class DireitosRoque():
 class Movimento():
     #mapeia teclas para valores
     # tecla = valor
-    ranksParaLinhas = {"1" : 7,"2" : 6,"3" : 5,"4" : 4,
+    RanksParaLinhas = {"1" : 7,"2" : 6,"3" : 5,"4" : 4,
                        "5" : 3,"6" : 2,"7" : 1,"8" : 0}
-    linhasParaRanks = {v: t for t, v in ranksParaLinhas.items()}
-    arquivosParaColunas = {"a" : 0,"b" : 1,"c" : 2,"d" : 3,
+    LinhasParaRanks = {v: t for t, v in RanksParaLinhas.items()}
+    ArquivosParaColunas = {"a" : 0,"b" : 1,"c" : 2,"d" : 3,
                            "e" : 4,"f" : 5,"g" : 6,"h" : 7}
-    colunasParaArquivos = {v: t for t, v in arquivosParaColunas.items()}
+    ColunasParaArquivos = {v: t for t, v in ArquivosParaColunas.items()}
 
     def __init__(self, QuadInicial, QuadFinal, tabuleiro, eMovimentoEnpassant = False, eMovimentoRoque = False):
         self.LinhaInicial = QuadInicial[0]
         self.ColInicial = QuadInicial[1]
         self.LinhaFinal = QuadFinal[0]
         self.ColFinal = QuadFinal[1]
-        self.pecaMovida = tabuleiro[self.LinhaInicial][self.ColInicial]
-        self.pecaGravada = tabuleiro[self.LinhaFinal][self.ColFinal]
+        self.PecaMovida = tabuleiro[self.LinhaInicial][self.ColInicial]
+        self.PecaCapturada = tabuleiro[self.LinhaFinal][self.ColFinal]
         #Promoção de peão
-        self.ePromocaoPeao = (self.pecaMovida == 'wP' and self.LinhaFinal == 0) or (self.pecaMovida == 'bP' and self.LinhaFinal == 7)
+        self.ePromocaoPeao = (self.PecaMovida == 'wP' and self.LinhaFinal == 0) or (self.PecaMovida == 'bP' and self.LinhaFinal == 7)
         #En passant
         self.eMovimentoEnpassant = eMovimentoEnpassant
         if self.eMovimentoEnpassant:
-            self.pecaGravada = 'wP' if self.pecaMovida == 'bP' else 'bP'
+            self.PecaCapturada = 'wP' if self.PecaMovida == 'bP' else 'bP'
         #Movimento Roque
         self.eMovimentoRoque = eMovimentoRoque
 
-        self.eCapturada = self.pecaGravada != "--"
+        self.eCapturada = self.PecaCapturada != "--"
         self.idMovimento = self.LinhaInicial * 1000 + self.ColInicial * 100 + self.LinhaFinal * 10 + self.ColFinal
 
     '''
@@ -608,19 +689,19 @@ class Movimento():
                 return "0-0"
         if self.eMovimentoEnpassant:
             return self.getRankFile(self.LinhaInicial, self.ColInicial)[0] + "x" + self.getRankFile(self.LinhaFinal, self.LinhaFinal) + " e.p."
-        if self.pecaGravada != "--":
-            if self.pecaMovida[1] == "P":
+        if self.PecaCapturada != "--":
+            if self.PecaMovida[1] == "P":
                 return self.getRankFile(self.LinhaInicial, self.ColInicial)[0] + "x" + self.getRankFile(self.LinhaFinal, self.ColFinal)
             else:
-                return self.pecaMovida[1] + "x" + self.getRankFile(self.LinhaFinal, self.ColFinal)
+                return self.PecaMovida[1] + "x" + self.getRankFile(self.LinhaFinal, self.ColFinal)
         else:
-            if self.pecaMovida[1] == "P":
+            if self.PecaMovida[1] == "P":
                 return self.getRankFile(self.LinhaFinal, self.ColFinal)
             else:
-                return self.pecaMovida[1] + self.getRankFile(self.LinhaFinal, self.ColFinal)
+                return self.PecaMovida[1] + self.getRankFile(self.LinhaFinal, self.ColFinal)
 
     def getRankFile(self, l, c):
-        return self.colunasParaArquivos[c] + self.linhasParaRanks[l]
+        return self.ColunasParaArquivos[c] + self.LinhasParaRanks[l]
 
     def __str__(self):
         if self.eMovimentoRoque:
@@ -628,13 +709,13 @@ class Movimento():
 
         QuadFinal = self.getRankFile(self.LinhaFinal, self.ColFinal)
 
-        if self.pecaMovida[1] == "P":
+        if self.PecaMovida[1] == "P":
             if self.eCapturada:
-                return self.colunasParaArquivos[self.ColInicial] + "x" + QuadFinal
+                return self.ColunasParaArquivos[self.ColInicial] + "x" + QuadFinal
             else:
                 return QuadFinal + "Q" if self.ePromocaoPeao else QuadFinal
 
-        MoverCorda = self.pecaMovida[1]
+        MoverCorda = self.PecaMovida[1]
         if self.eCapturada:
             MoverCorda += "x"
         return MoverCorda + QuadFinal
