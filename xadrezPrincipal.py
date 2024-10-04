@@ -53,13 +53,21 @@ def Principal():
     vitorias_jogador2 = 0
     while running:
         TurnoPessoa = (aj.whiteToMove and JogadorUm) or (not aj.whiteToMove and JogadorDois)
+        botao_empate = DesenharInformacoesJogo(tela, aj, 0, 0, tempoJogador1, tempoJogador2, vitorias_jogador1, vitorias_jogador2)
         for e in x.event.get():
             if e.type == x.QUIT:
                 x.quit()
                 sys.exit()
             #mouse handler
             elif e.type == x.MOUSEBUTTONDOWN:
-                if not FimDoJogo:
+                pos = x.mouse.get_pos()
+                if botao_empate.collidepoint(pos):
+                    # Tratar clique no botão de empate
+                    DesenharTextoFimDeJogo(tela, 'Empate!')
+                    x.display.update()
+                    x.time.delay(3000)  # Pausa para o jogador ver a mensagem
+                    FimDoJogo = True  # Define que o jogo terminou
+                elif not FimDoJogo:
                     localizacao = x.mouse.get_pos() #posição do mouse
                     col = localizacao[0]//SQ_SIZE
                     linha = localizacao[1]//SQ_SIZE
@@ -74,7 +82,7 @@ def Principal():
                         print(mover.getNotacaoXadrez())
                         for i in range(len(MovimentosValidos)):
                             if mover == MovimentosValidos[i]:
-                                aj.FazerMovimento(MovimentosValidos[i])
+                                FimDoJogo = aj.FazerMovimento(MovimentosValidos[i], tela)
                                 MovimentoFeito = True
                                 animar = True
                                 QuadSelecionado = () #resetar cliques do usuário
@@ -164,23 +172,27 @@ def Principal():
                 # Pausa por 3000 milissegundos (3 segundos)
                 x.display.update()  # Atualiza a tela para mostrar a mensagem
                 x.time.delay(3000)  # Atraso de 3 segundos antes de prosseguir
-        if aj.Chequemate or aj.Impasse or aj.Empate50Movimentos: #or aj.verificar_empate_por_insuficiencia_material(aj.tabuleiro):
+        # Verifica se houve chequemate, impasse, empate por 50 movimentos, ou insuficiência de material
+        if aj.Chequemate or aj.Impasse or aj.Empate50Movimentos or aj.verificar_empate_por_insuficiencia_material(aj.tabuleiro):
             if not FimDoJogo:
                 FimDoJogo = True
                 if aj.Empate50Movimentos:
                     DesenharTextoFimDeJogo(tela, 'Empate por 50 movimentos')
                 elif aj.Impasse: 
                     DesenharTextoFimDeJogo(tela, 'Empate por Afogamento')
-                    '''elif aj.verificar_empate_por_insuficiencia_material(aj.tabuleiro):
-                    DesenharTextoFimDeJogo(tela, 'Empate por insuficiência de material')'''
+                elif aj.verificar_empate_por_insuficiencia_material(aj.tabuleiro):
+                    DesenharTextoFimDeJogo(tela, 'Empate por insuficiência de material')
                 else:
+                    # Caso de chequemate
                     vitorias_jogador2 += 1 if aj.whiteToMove else 0
                     vitorias_jogador1 += 1 if not aj.whiteToMove else 0
                     DesenharTextoFimDeJogo(tela, 'Pretas vencem por chequemate' if aj.whiteToMove else 'Brancas vencem por chequemate')
-                # Pausa por 3000 milissegundos (3 segundos)
+                
+                # Pausa de 3 segundos para mostrar a mensagem de fim do jogo
                 x.display.update()  # Atualiza a tela para mostrar a mensagem
                 x.time.delay(3000)  # Atraso de 3 segundos antes de prosseguir
-                
+
+        # Atualização da tela e controle de FPS
         tempo.tick(MAX_FPS)
         x.display.flip()
 
@@ -196,6 +208,38 @@ def FazerJogo(tela, aj, MovimentosValidos, QuadSelecionado, MoveLogFonte):
     QuadradosBrilhantes(tela, aj, MovimentosValidos, QuadSelecionado)
     DesenharPecas(tela, aj.tabuleiro) #desenhar peças no topo dos quadrados
     DesenharMoveLog(tela, aj, MoveLogFonte)
+
+def checar_empate_repeticao(tela, aj):
+    if aj.verificar_repeticao_movimentos():
+        DesenharTextoFimDeJogo(tela, 'Repetição de 3 movimentos detectada. \n Declarar empate?')
+        empate = DesenharBotaoEmpate3Movimentos(tela)
+        if empate:
+            return True  # Retorna True se o jogador declarar empate
+    return False
+
+"""
+Função para desenhar botões 'Sim' e 'Não' para o empate por repetição de três movimentos.
+Retorna True se o jogador escolher empatar, False caso contrário.
+"""
+
+def DesenharBotaoEmpate3Movimentos(tela):
+    fonte = x.font.SysFont("Arial", 36, True, False)
+    textoSim = fonte.render("Sim", True, x.Color("white"))
+    textoNao = fonte.render("Não", True, x.Color("white"))
+
+    larguraBotao = textoSim.get_width() + 50
+    alturaBotao = textoSim.get_height() + 20
+
+    distanciaAbaixoTexto = 80
+    botaoSim = x.Rect(LARGURATABULEIRO // 2 - larguraBotao // 2 - 70, ALTURATABULEIRO // 2 + distanciaAbaixoTexto, larguraBotao, alturaBotao)
+    botaoNao = x.Rect(LARGURATABULEIRO // 2 + larguraBotao // 2 - 40, ALTURATABULEIRO // 2 + distanciaAbaixoTexto, larguraBotao, alturaBotao)
+
+    desenharBotao(tela, botaoSim, textoSim)
+    desenharBotao(tela, botaoNao, textoNao)
+    x.display.update()
+
+    # Retorna os botões, e a lógica de verificação fica no loop principal
+    return botaoSim, botaoNao
 
 '''
 Desenhar Seleção de modo de jogo
@@ -375,6 +419,13 @@ def DesenharInformacoesJogo(tela, aj, x_offset, y_offset, tempoJogador1, tempoJo
     tela.blit(tempoJogador1Texto, (LARGURATABULEIRO//2 - tempoJogador1Texto.get_width() - 150, ALTURATABULEIRO + 20 + y_offset))
     tela.blit(tempoJogador2Texto, (LARGURATABULEIRO//2 -100, ALTURATABULEIRO + 20 + y_offset))
     tela.blit(texto_placar, (LARGURATABULEIRO//2 + 90, ALTURATABULEIRO + 20 + y_offset))
+    # Criar o botão de empate
+    botao_empate_rect = x.Rect(LARGURATABULEIRO//2 + 305, ALTURATABULEIRO + y_offset, 255, 100)  # Botão centralizado
+    x.draw.rect(tela, x.Color('lightgray'), botao_empate_rect)  # Cor do botão
+    texto_empate = fonte.render("Empate", True, x.Color('black'))
+    tela.blit(texto_empate, (botao_empate_rect.x + 70, botao_empate_rect.y + 20))  # Posiciona o texto no botão
+
+    return botao_empate_rect  # Retorna o retângulo do botão
 
 '''
 quadrado brilhante selecionado e movimentos para peça selecionada
@@ -467,13 +518,46 @@ def MovimentoAnimado(mover, tela, tabuleiro, tempo):
         x.display.flip()
         tempo.tick(60)
 
-def DesenharTextoFimDeJogo(tela, texto):
+def DesenharTextoFimDeJogo(tela, texto, deslocamento_vertical = 0):
     fonte = x.font.SysFont("Helvetica", 32, True, False)
-    TextoObj = fonte.render(texto, 0, x.Color("gray"))
-    LocalizacaoTexto = x.Rect(0, 0, LARGURATABULEIRO, ALTURATABULEIRO).move(LARGURATABULEIRO / 2 - TextoObj.get_width() / 2, ALTURATABULEIRO / 2 - TextoObj.get_height() / 2)
-    tela.blit(TextoObj, LocalizacaoTexto)
-    TextoObj = fonte.render(texto, 0, x.Color('black'))
-    tela.blit(TextoObj, LocalizacaoTexto.move(2, 2))
+
+    # Divide o texto em linhas
+    linhas = texto.split('\n')
+
+    # Desenha cada linha do texto
+    for i, linha in enumerate(linhas):
+        TextoObj = fonte.render(linha, 0, x.Color("gray"))
+        LocalizacaoTexto = x.Rect(0, 0, LARGURATABULEIRO, ALTURATABULEIRO).move(
+            LARGURATABULEIRO / 2 - TextoObj.get_width() / 2,
+            ALTURATABULEIRO / 2 - TextoObj.get_height() / 2 + i * 40 + deslocamento_vertical  # Ajuste vertical baseado na linha
+        )
+        tela.blit(TextoObj, LocalizacaoTexto)
+
+        # Adiciona sombra
+        TextoObj = fonte.render(linha, 0, x.Color('black'))
+        tela.blit(TextoObj, LocalizacaoTexto.move(2, 2))
+
+def perguntar_empate_por_repeticao(tela):
+    DesenharTextoFimDeJogo(tela, 'Repetição de 3 posições detectada. \n Declarar empate?')
+    botaoSim, botaoNao = DesenharBotaoEmpate3Movimentos(tela)  # Desenha os botões "Sim" e "Não"
+    
+    empateEscolhido = False  # Flag para saber se o jogador já fez uma escolha
+    
+    while not empateEscolhido:
+        for e in x.event.get():
+            if e.type == x.QUIT:
+                return False  # Sai do jogo, sem declarar empate
+            elif e.type == x.MOUSEBUTTONDOWN:  # Verifica se um botão foi clicado
+                pos = x.mouse.get_pos()  # Pega a posição do clique
+                
+                if botaoSim.collidepoint(pos):  # Jogador clicou em "Sim"
+                    DesenharTextoFimDeJogo(tela, 'Empate por repetição de 3 posições', -70)  # Mostra a mensagem de empate
+                    x.display.update()
+                    x.time.delay(3000)  # Pausa para o jogador ver a mensagem final de empate
+                    return True  # Jogador escolheu empatar, retornar True para indicar que o jogo deve terminar
+                    
+                elif botaoNao.collidepoint(pos):  # Jogador clicou em "Não"
+                    return False  # Jogador escolheu continuar jogando
 
 if __name__ == "__main__":
     Principal()

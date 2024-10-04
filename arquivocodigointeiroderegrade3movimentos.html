@@ -1,0 +1,105 @@
+self.historicoPosicoes = {}
+
+
+def FazerMovimento(self, mover, tela = None):
+# Atualiza o histórico de posições após o movimento
+self.atualizar_historico_posicoes()
+
+# Verificar repetição de 3 posições após o movimento
+if self.verificar_repeticao_posicoes() and tela is not None:
+    xadrezPrincipal.perguntar_empate_por_repeticao(tela)
+
+def verificar_repeticao_posicoes(self):
+    """
+    Verifica se a posição atual foi repetida 3 vezes.
+    """
+    posicao_atual = (
+        tuple(tuple(peca for peca in linha) for linha in self.tabuleiro),
+        self.whiteToMove,
+        (self.DireitoRoqueAtual.wks, self.DireitoRoqueAtual.wqs,
+        self.DireitoRoqueAtual.bks, self.DireitoRoqueAtual.bqs),
+        self.EnpassantPossivel
+    )
+
+    return self.historicoPosicoes.get(posicao_atual, 0) >= 3
+
+def atualizar_historico_posicoes(self):
+    """
+    Atualiza o histórico de posições com a posição atual.
+    """
+    posicao_atual = (
+        tuple(tuple(peca for peca in linha) for linha in self.tabuleiro),
+        self.whiteToMove,
+        (self.DireitoRoqueAtual.wks, self.DireitoRoqueAtual.wqs,
+        self.DireitoRoqueAtual.bks, self.DireitoRoqueAtual.bqs),
+        self.EnpassantPossivel
+    )
+
+    if posicao_atual in self.historicoPosicoes:
+        self.historicoPosicoes[posicao_atual] += 1
+    else:
+        self.historicoPosicoes[posicao_atual] = 1
+
+        def perguntar_empate_por_repeticao(tela):
+        DesenharTextoFimDeJogo(tela, 'Repetição de 3 posições detectada. \n Declarar empate?')
+        botaoSim, botaoNao = DesenharBotaoEmpate3Movimentos(tela)  # Desenha os botões "Sim" e "Não"
+        
+        empateEscolhido = False  # Flag para saber se o jogador já fez uma escolha
+        
+        while not empateEscolhido:
+            for e in x.event.get():
+                if e.type == x.QUIT:
+                    return  # Sai do jogo
+                elif e.type == x.MOUSEBUTTONDOWN:  # Verifica se um botão foi clicado
+                    pos = x.mouse.get_pos()  # Pega a posição do clique
+                    
+                    if botaoSim.collidepoint(pos):  # Jogador clicou em "Sim"
+                        FimDoJogo = True
+                        DesenharTextoFimDeJogo(tela, 'Empate por repetição de 3 posições', -70)  # Mostra a mensagem de empate
+                        x.display.update()
+                        x.time.delay(3000)  # Pausa para o jogador ver a mensagem final de empate
+                        empateEscolhido = True  # Jogador escolheu empatar
+                        
+                    elif botaoNao.collidepoint(pos):  # Jogador clicou em "Não"
+                        empateEscolhido = True  # Jogador escolheu continuar jogando
+
+# Criar o botão de empate
+botao_empate_rect = x.Rect(LARGURATABULEIRO//2 + 305, ALTURATABULEIRO + y_offset, 255, 400)  # Botão centralizado
+x.draw.rect(tela, x.Color('lightgray'), botao_empate_rect)  # Cor do botão
+texto_empate = fonte.render("Empate", True, x.Color('black'))
+tela.blit(texto_empate, (botao_empate_rect.x + 70, botao_empate_rect.y + 20))  # Posiciona o texto no botão
+
+def checar_empate_repeticao(tela, aj):
+    if aj.verificar_repeticao_movimentos():
+        DesenharTextoFimDeJogo(tela, 'Repetição de 3 movimentos detectada. \n Declarar empate?')
+        empate = DesenharBotaoEmpate3Movimentos(tela)
+        if empate:
+            return True  # Retorna True se o jogador declarar empate
+    return False
+
+"""
+Função para desenhar botões 'Sim' e 'Não' para o empate por repetição de três movimentos.
+Retorna True se o jogador escolher empatar, False caso contrário.
+"""
+
+def DesenharBotaoEmpate3Movimentos(tela):
+    fonte = x.font.SysFont("Arial", 36, True, False)
+    textoSim = fonte.render("Sim", True, x.Color("white"))
+    textoNao = fonte.render("Não", True, x.Color("white"))
+
+    larguraBotao = textoSim.get_width() + 50
+    alturaBotao = textoSim.get_height() + 20
+
+    distanciaAbaixoTexto = 80
+    botaoSim = x.Rect(LARGURATABULEIRO // 2 - larguraBotao // 2 - 70, ALTURATABULEIRO // 2 + distanciaAbaixoTexto, larguraBotao, alturaBotao)
+    botaoNao = x.Rect(LARGURATABULEIRO // 2 + larguraBotao // 2 - 40, ALTURATABULEIRO // 2 + distanciaAbaixoTexto, larguraBotao, alturaBotao)
+
+    desenharBotao(tela, botaoSim, textoSim)
+    desenharBotao(tela, botaoNao, textoNao)
+    x.display.update()
+
+    # Retorna os botões, e a lógica de verificação fica no loop principal
+    return botaoSim, botaoNao
+
+aj.FazerMovimento(MovimentosValidos[i], tela)
+
