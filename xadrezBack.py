@@ -50,7 +50,7 @@ class ArmazenamentoJogo():
         self.MoveLog.append(mover)#guardar o movimento para poder voltar depois
         self.whiteToMove = not self.whiteToMove #trocar turno
         #atualiza a localização do rei se movido
-        
+
         # Toca o som do movimento da peça
         xadrezPrincipal.x.mixer.Sound.play(xadrezPrincipal.SomMovimento)
 
@@ -71,11 +71,11 @@ class ArmazenamentoJogo():
 
         #Promoção de Peão
         if mover.ePromocaoPeao:
-            #if not is_AI:
-            #    PecaPromovida = input("Promover para Q, R, B, or N:") #take this to UI later
-            #    self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = mover.pecaMovida[0] + PecaPromovida
-            #else:
-            self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = mover.PecaMovida[0] + 'Q'
+            if tela is not None:
+                peca_promovida = xadrezPrincipal.escolher_promocao(tela, mover.PecaMovida[0])
+                self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = mover.PecaMovida[0] + peca_promovida
+            else:
+                self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = mover.PecaMovida[0] + 'Q'
         
         #Movimento Enpassant 
         if mover.eMovimentoEnpassant:

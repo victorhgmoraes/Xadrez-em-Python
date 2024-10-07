@@ -12,6 +12,13 @@ SQ_SIZE = ALTURATABULEIRO // DIMENSAO
 ALTURAINFORMACOESJOGO = SQ_SIZE
 MAX_FPS = 15 #15 de acordo com o video
 IMAGENS = {}
+# Dicionário para mapear os nomes em português para as letras em inglês
+pecas_promocao = {
+    "Rainha": "Q",
+    "Torre": "R",
+    "Bispo": "B",
+    "Cavalo": "N"
+}
 
 x.mixer.init()  # Inicializa o mixer de som
 SomMovimento = x.mixer.Sound('C:/Users/Wilson/Desktop/Xadrez/sons/MovimentoPeca.mp3')  # Carrega o som
@@ -561,6 +568,52 @@ def perguntar_empate_por_repeticao(tela):
                     
                 elif botaoNao.collidepoint(pos):  # Jogador clicou em "Não"
                     return False  # Jogador escolheu continuar jogando
+
+# Função para escolher a peça para a promoção
+def escolher_promocao(tela, cor_peao):
+    # Desenhar opções na tela
+    fonte = x.font.SysFont("Arial", 32)
+    texto_opcoes = ["Rainha", "Torre", "Bispo", "Cavalo"]
+    opcoes_rects = []
+
+    # Desenhar os botões com espaçamento
+    espaco_vertical = 10  # Espaçamento vertical entre os botões
+    for i, opcao in enumerate(texto_opcoes):
+        texto_renderizado = fonte.render(opcao, True, (255, 255, 255))  # Texto na cor branca
+        rect = x.Rect(300, 200 + i * (60 + espaco_vertical), 200, 50)  # Posição e tamanho dos botões
+        
+        # Efeito de hover (realce ao passar o mouse)
+        pos = x.mouse.get_pos()
+        if rect.collidepoint(pos):
+            desenharBotao(tela, rect, texto_renderizado, corBotao=(34, 40, 49))  # Realçar
+        else:
+            desenharBotao(tela, rect, texto_renderizado)  # Desenhar normalmente
+        
+        opcoes_rects.append(rect)
+
+    x.display.flip()  # Atualizar a tela
+
+    # Esperar até que o jogador escolha uma peça
+    escolhida = False
+    while not escolhida:
+        for e in x.event.get():
+            if e.type == x.QUIT:
+                x.quit()
+                exit()
+            if e.type == x.MOUSEBUTTONDOWN:
+                posicao_mouse = x.mouse.get_pos()
+                for i, rect in enumerate(opcoes_rects):
+                    if rect.collidepoint(posicao_mouse):
+                        return pecas_promocao[texto_opcoes[i]]  # Retorna 'Q', 'T', 'B', ou 'C'
+        
+        # Redesenhar os botões para aplicar o efeito de hover continuamente
+        for i, rect in enumerate(opcoes_rects):
+            if rect.collidepoint(x.mouse.get_pos()):
+                desenharBotao(tela, rect, fonte.render(texto_opcoes[i], True, (255, 255, 255)), corBotao=(34, 40, 49))
+            else:
+                desenharBotao(tela, rect, fonte.render(texto_opcoes[i], True, (255, 255, 255)))
+
+        x.display.flip()  # Atualizar a tela novamente
 
 if __name__ == "__main__":
     Principal()

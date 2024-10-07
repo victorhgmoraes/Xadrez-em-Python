@@ -1,5 +1,5 @@
 import random
-
+import xadrezPrincipal
 pontuacaoPeca = {"K": 0, "Q": 10, "R": 5, "B": 3, "N": 3, "P": 1}
 
 pontuacaoCavalo = [[1, 1, 1, 1, 1, 1, 1, 1],
@@ -152,16 +152,22 @@ def EncontrarMovimentoNegaMaxAlphaBeta(aj, movimentosValidos, depth, alpha, beta
     global ProximoMovimento
     if depth == 0:
         return MultiplicadorDeTurno * pontuacaoTabuleiro(aj)
-    # mover ordem - implementar mais tarde
+
     pontuacaoMax = -CHEQUEMATE
     for mover in movimentosValidos:
         aj.FazerMovimento(mover)
+        
+        # Toca o som do movimento após a peça ser movida
+        xadrezPrincipal.x.mixer.Sound.play(xadrezPrincipal.SomMovimento)
+
         ProximosMovimentos = aj.getMovimentosValidos()
         pontuacao = -EncontrarMovimentoNegaMaxAlphaBeta(aj, ProximosMovimentos, depth - 1, -beta, -alpha, -MultiplicadorDeTurno)
+        
         if pontuacao > pontuacaoMax:
             pontuacaoMax = pontuacao
             if depth == DEPTH:
                 ProximoMovimento = mover
+                
         aj.DesfazerMovimento()
         if pontuacaoMax > alpha:
             alpha = pontuacaoMax
