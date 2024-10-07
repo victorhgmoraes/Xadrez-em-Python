@@ -13,6 +13,9 @@ ALTURAINFORMACOESJOGO = SQ_SIZE
 MAX_FPS = 15 #15 de acordo com o video
 IMAGENS = {}
 
+x.mixer.init()  # Inicializa o mixer de som
+SomMovimento = x.mixer.Sound('C:/Users/Wilson/Desktop/Xadrez/sons/MovimentoPeca.mp3')  # Carrega o som
+
 def CarregarImagens():
     pecas = ['wP','wR','wQ','wK','wN','wB','bP','bR','bN','bB','bK','bQ']
     for peca in pecas:
@@ -516,7 +519,7 @@ def MovimentoAnimado(mover, tela, tabuleiro, tempo):
         # desenhar peça movendo
         tela.blit(IMAGENS[mover.PecaMovida], x.Rect(c * SQ_SIZE, l * SQ_SIZE, SQ_SIZE, SQ_SIZE))
         x.display.flip()
-        tempo.tick(60)
+        tempo.tick(120)
 
 def DesenharTextoFimDeJogo(tela, texto, deslocamento_vertical = 0):
     fonte = x.font.SysFont("Helvetica", 32, True, False)
