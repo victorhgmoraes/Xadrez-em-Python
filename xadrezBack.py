@@ -43,16 +43,16 @@ class ArmazenamentoJogo():
     '''
     Pega um movimento como um parametro e executa(isso n funcionará para roques, promoção de peão e en-passant)
     '''
-    def FazerMovimento(self, mover, tela = None):
+    def FazerMovimento(self, mover, tela = None, TocarSom = True):
         self.HistoricoContadores.append(self.Contador50Movimentos)
         self.tabuleiro[mover.LinhaInicial][mover.ColInicial] = "--"
         self.tabuleiro[mover.LinhaFinal][mover.ColFinal] = mover.PecaMovida
         self.MoveLog.append(mover)#guardar o movimento para poder voltar depois
         self.whiteToMove = not self.whiteToMove #trocar turno
         #atualiza a localização do rei se movido
-
+        if TocarSom:
         # Toca o som do movimento da peça
-        xadrezPrincipal.x.mixer.Sound.play(xadrezPrincipal.SomMovimento)
+            xadrezPrincipal.x.mixer.Sound.play(xadrezPrincipal.SomMovimento)
 
         # Se foi captura ou movimento de peão, resetar o contador
         if mover.PecaCapturada != '--' or mover.PecaMovida[1] == 'P':  

@@ -155,10 +155,7 @@ def EncontrarMovimentoNegaMaxAlphaBeta(aj, movimentosValidos, depth, alpha, beta
 
     pontuacaoMax = -CHEQUEMATE
     for mover in movimentosValidos:
-        aj.FazerMovimento(mover)
-        
-        # Toca o som do movimento após a peça ser movida
-        xadrezPrincipal.x.mixer.Sound.play(xadrezPrincipal.SomMovimento)
+        aj.FazerMovimento(mover, TocarSom = False)
 
         ProximosMovimentos = aj.getMovimentosValidos()
         pontuacao = -EncontrarMovimentoNegaMaxAlphaBeta(aj, ProximosMovimentos, depth - 1, -beta, -alpha, -MultiplicadorDeTurno)
